@@ -575,19 +575,6 @@ public class JsonExplorer {
 		}
 	}
 	
-	/*
-	 * -n nested
-	 * -a all
-	 * -ik search in keys
-	 * -iv search in values
-	 * -eo exclude objects
-	 * -ea exclude arrays
-	 * -ep exclude primitives
-	 * -en exclude nulls
-	 * -adv advanced search
-	 * -reg regex search
-	 * 
-	 */
 
 	private static void printHelp() {
 		
