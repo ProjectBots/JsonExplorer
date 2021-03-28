@@ -6,11 +6,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.time.LocalTime;
 import java.util.Hashtable;
 
 public class NEF {
-	
 	
 	public static void log(String path, String log) {
 		
@@ -18,7 +18,12 @@ public class NEF {
 		
 		String text = "";
 		
-		if(file.exists()) text = read(path) + "\n\n";
+		if(file.exists())
+			try {
+				text = read(path) + "\n\n";
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		
 		LocalTime lt = LocalTime.now();
 		text += "---- " + lt.getHour() + ":" + lt.getMinute() + "," + lt.getSecond() + " ----\n" + log;
@@ -151,7 +156,9 @@ public class NEF {
 		}
 	}
 	
-	public static String read(String path) {
+	public static String read(String path) throws IOException {
+		
+		
 		
 		File file = new File(path);
 		
@@ -166,13 +173,11 @@ public class NEF {
 			for(String line = br.readLine(); line != null; line = br.readLine()) {
 				text.append(line + "\n");
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		} finally {
 			try {
 				br.close();
 				r.close();
-			} catch (Exception e) {}
+			} catch (Exception e1) {}
 		}
 		return text.toString();
 	}
