@@ -8,4 +8,3 @@ explore and edit realy big jsons without crashing your computer
 import Objects/Arrays to view  
 merge Object/Arrays into view  
 extract Objects/Arrays into a new file  
-search function (normal/advanced/regex)  

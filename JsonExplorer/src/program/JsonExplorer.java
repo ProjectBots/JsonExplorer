@@ -58,6 +58,9 @@ public class JsonExplorer {
 				String arg = (index == -1 ? "" : in.substring(index+1));
 				
 				switch(cmd) {
+				case "":
+					if(!path.equals("")) show();
+					break;
 				case "help":
 					printHelp();
 					break;
@@ -76,6 +79,9 @@ public class JsonExplorer {
 				case "save":
 					save(arg);
 					break;
+				case "search":
+					search(arg);
+					break;
 					
 					
 				default:
@@ -92,11 +98,245 @@ public class JsonExplorer {
 		
 	}
 	
+	public static class Search {
+		
+		private boolean nested = false;
+		private boolean keys = true;
+		private boolean values = true;
+		private boolean objects = true;
+		private boolean arrays = true;
+		private boolean primitives = true;
+		private boolean nulls = true;
+		
+		private String term = null;
+		
+		
+		
+		public void setNested(boolean nested) {
+			this.nested = nested;
+		}
 
+		public void setKeys(boolean keys) {
+			this.keys = keys;
+		}
+
+		public void setValues(boolean values) {
+			this.values = values;
+		}
+
+		public void setObjects(boolean objects) {
+			this.objects = objects;
+		}
+
+		public void setArrays(boolean arrays) {
+			this.arrays = arrays;
+		}
+
+		public void setPrimitives(boolean primitives) {
+			this.primitives = primitives;
+		}
+		
+		public void setNulls(boolean nulls) {
+			this.nulls = nulls;
+		}
+
+		public void setTerm(String term) {
+			this.term = term;
+		}
+		
+		public static class consts {
+			public static final int normal = 0;
+			public static final int advanced = 1;
+			public static final int regex = 2;
+		}
+		
+
+		public void search(int mode, JsonElement je, String path) {
+			if(je.isJsonObject()) {
+				JsonObject jo = je.getAsJsonObject();
+				for(String key : jo.keySet()) {
+					test(mode, jo.get(key), key, path);
+				}
+			} else {
+				JsonArray ja = je.getAsJsonArray();
+				for(int i=0; i<ja.size(); i++) {
+					test(mode, ja.get(i), ""+i, path);
+				}
+			}
+		}
+		
+		private void test(int mode, JsonElement e, String key, String path) {
+			if(nested && (e.isJsonArray() || e.isJsonObject())) {
+				search(mode, e, path + "\\" + key);
+			}
+			
+			ifc:
+			if(keys) {
+				if((!primitives && e.isJsonPrimitive())
+				|| (!arrays && e.isJsonArray())
+				|| (!objects && e.isJsonObject())
+				|| (!nulls && e.isJsonNull())
+				) break ifc;
+				
+				switch(mode) {
+				case consts.normal:
+					if(!key.contains(term)) break ifc;
+					break;
+				case consts.advanced:
+					if(!advMatch(key)) break ifc;
+					break;
+				case consts.regex:
+					if(!Pattern.matches(term, key)) break ifc;
+					break;
+				}
+				
+				System.out.print(path + "> \"" + key + "\" : ");
+				display(e);
+				return;
+			}
+			
+			if(values && primitives && e.isJsonPrimitive()) {
+				switch(mode) {
+				case consts.normal:
+					if(!e.getAsJsonPrimitive().getAsString().contains(term)) return;
+					break;
+				case consts.advanced:
+					if(!advMatch(e.getAsJsonPrimitive().getAsString())) return;
+					break;
+				case consts.regex:
+					if(!Pattern.matches(term, e.getAsJsonPrimitive().getAsString())) return;
+					break;
+				}
+				
+				System.out.print(path + "> \"" + key + "\" : ");
+				display(e);
+			}
+		}
+
+		private boolean advMatch(String key) {
+			String[] parts = term.split("#");
+			for(int i=term.length()-1; i>0; i--) {
+				if(term.substring(i-1, i).equals("#")) {
+					parts = add(parts, "");
+				} else {
+					break;
+				}
+			}
+			
+			boolean first = true;
+			
+			for(int i=0; i<parts.length; i++) {
+				if(!parts[i].equals("")) {
+					int index = key.indexOf(parts[i]);
+					if(first && index != 0) return false;
+					if(index == -1) return false;
+					key = key.substring(index + parts[i].length());
+				}
+				if(i<parts.length-1) {
+					if(key.length() == 0) return false;
+					key = key.substring(1);
+				} else if(parts[i].equals("")) {
+					if(key.length() == 0) return false;
+				} else {
+					if(key.length() != 0) return false;
+				}
+				first = false;
+			}
+			
+			return true;
+		}
+		
+		private String[] add(String[] arr, String item) {
+			String[] arr2 = new String[arr.length + 1];
+			System.arraycopy(arr, 0, arr2, 0, arr.length);
+			arr2[arr.length] = item;
+			return arr2;
+		}
+
+		
+	}
+	
+
+	private static void search(String arg) {
+		
+		
+		int count = 0;
+		Search s = new Search();
+		
+		if(arg.contains("-n ")) {
+			s.setNested(true);
+			count+=3;
+		}
+		if(arg.contains("-ik ")) {
+			s.setValues(false);
+			count+=4;
+		}
+		if(arg.contains("-iv ")) {
+			s.setKeys(false);
+			count+=4;
+		}
+		if(arg.contains("-eo ")) {
+			s.setObjects(false);
+			count+=4;
+		}
+		if(arg.contains("-ea ")) {
+			s.setArrays(false);
+			count+=4;
+		}
+		if(arg.contains("-ep ")) {
+			s.setPrimitives(false);
+			count+=4;
+		}
+		if(arg.contains("-en ")) {
+			s.setNulls(false);
+			count+=4;
+		}
+		
+		String path = JsonExplorer.path;
+		if(arg.contains("-a ")) {
+			int index = path.indexOf("\\");
+			path = (index != -1 ? path.substring(0, index) : path);
+			s.setNested(true);
+			count+=3;
+		}
+		
+		if(arg.contains("-reg ") && arg.contains("-adv ")) {
+			System.out.println("cant search advanced and regex");
+			return;
+		}
+		
+		
+		try {
+			JsonElement je = getFromPath(path);
+			printlns();
+			if(arg.contains("-adv ")) {
+				s.setTerm(arg.substring(count + 5));
+				s.search(Search.consts.advanced, je, path);
+			} else if(arg.contains("-reg ")) {
+				s.setTerm(arg.substring(count + 5));
+				s.search(Search.consts.regex, je, path);
+			} else {
+				s.setTerm(arg.substring(count));
+				s.search(Search.consts.normal, je, path);
+			}
+		} catch (BothNullException e) {
+			System.out.println("nothing to search in");
+		}
+		
+		
+	}
+
+	
 	private static void rem(String arg) {
 		if(arg.equals("")) return;
 		
-		JsonElement el = getFromPath();
+		JsonElement el;
+		try {
+			el = getFromPath();
+		} catch (BothNullException e1) {
+			System.out.println("no file is open");
+			return;
+		}
 		if(el == null) return;
 		if(el.isJsonObject()) {
 			el.getAsJsonObject().remove(arg);
@@ -158,8 +398,13 @@ public class JsonExplorer {
 		String key = pair[0];
 		String value = pair[1];
 		
-		JsonElement parent  = getFromPath();
-		if(parent == null) return;
+		JsonElement parent;
+		try {
+			parent = getFromPath();
+		} catch (BothNullException e) {
+			System.out.println("no file is open");
+			return;
+		}
 		if(parent.isJsonObject()) {
 			parent.getAsJsonObject().add(key, string2JsonElement(value));
 		} else {
@@ -215,8 +460,13 @@ public class JsonExplorer {
 			show();
 			return;
 		}
-		JsonElement parent = getFromPath();
-		if(parent == null) return;
+		JsonElement parent;
+		try {
+			parent = getFromPath();
+		} catch (BothNullException e1) {
+			System.out.println("no file is open");
+			return;
+		}
 		JsonElement el = null;
 		if(parent.isJsonObject()) {
 			el = parent.getAsJsonObject().get(arg);
@@ -276,7 +526,13 @@ public class JsonExplorer {
 
 	private static void show() {
 		printlns();
-		JsonElement parent = getFromPath();
+		JsonElement parent;
+		try {
+			parent = getFromPath();
+		} catch (BothNullException e) {
+			System.out.println("no file is open");
+			return;
+		}
 		
 		if(parent.isJsonObject()) {
 			JsonObject obj = parent.getAsJsonObject();
@@ -300,7 +556,7 @@ public class JsonExplorer {
 			if(p.isNumber() || p.isBoolean()) {
 				System.out.println(p.getAsString());
 			} else {
-				System.out.println("\"" + p.getAsString() + "\"");
+				System.out.println("\"" + p.getAsString().replace("\n", "\\n") + "\"");
 			}
 		} else if(el.isJsonNull()) {
 			System.out.println("null");
@@ -319,22 +575,35 @@ public class JsonExplorer {
 		}
 	}
 	
+	/*
+	 * -n nested
+	 * -a all
+	 * -ik search in keys
+	 * -iv search in values
+	 * -eo exclude objects
+	 * -ea exclude arrays
+	 * -ep exclude primitives
+	 * -en exclude nulls
+	 * -adv advanced search
+	 * -reg regex search
+	 * 
+	 */
 
 	private static void printHelp() {
 		
 		String help =
 				  "open {file}##opens a file  "
 				+ "  "
-				+ "cd {obj/arr}##goes into the Object/Array  "
+				+ "cd {obj/arr}##goes into the object/array  "
 				+ "cd###goes one back  "
 				+ "  "
 				+ "help###prints this  "
 				+ "  "
 				+ "set {key} > {value}#sets the value of a key  "
 				+ "###true, false, null and numbers will be added as their type  "
-				+ "###{} will add an Object, [] will add an Array  "
+				+ "###{} will add an object, [] will add an array  "
 				+ "###ex: set hi > {}  "
-				+ "###use \\s before the value to add it as String  "
+				+ "###use \\s before the value to add it as string  "
 				+ "###ex: set hi > \\s[]  "
 				+ "  "
 				+ "rem {key}##deletes this key  "
@@ -344,37 +613,62 @@ public class JsonExplorer {
 				+ "save {locate}##saves the file in a specified location  "
 				+ "save -p {location}#saves the file in a specified location as pretty json  "
 				+ "  "
+				+ "search [params] {term}#searches after a term  "
+				+ "#-n##searches through nested objects/arrays from the current path  "
+				+ "#-a##searches through every nested objects/arrays  "
+				+ "#-ik##searches only in the keys  "
+				+ "#-iv##searches only in the value  "
+				+ "#-eo##exludes objects  "
+				+ "#-ea##exludes arrays  "
+				+ "#-ep##exludes primitives  "
+				+ "#-en##exludes nulls  "
+				+ "#-reg##triggers regex search (the search term is the pattern)  "
+				+ "#-adv##triggers advanced search (\\# are placeholders for one or more characters)  "
+				+ "###\\#itco\\# will match bitcoin but not itcoin because \\# has to stand for at least one character  "
+				+ "###bit\\#coin will match bitgggcoin but not bitcoin  "
+				+ "###itco will only match itco because there are no placeholders  "
+				+ "  "
 				+ "e###exits the program  ";
 		
 		
-		System.out.println(help.replace("#", "\u0009").replace("  ", "\r\n"));
+		System.out.println(help.replace("\\#", "{hashtag}").replace("#", "\u0009").replace("{hashtag}", "#").replace("  ", "\r\n"));
 	}
 	
 	
-	private static JsonElement getFromPath() {
+	private static class BothNullException extends Exception {
+		private static final long serialVersionUID = 1L;
+	}
+	
+	
+	private static JsonElement getFromPath() throws BothNullException {
+		return getFromPath(path);
+	}
+	
+	
+	private static JsonElement getFromPath(String path) throws BothNullException {
 		String[] paths = path.split("\\\\");
+		
+		if(obj == null && arr == null) throw new BothNullException();
 		
 		JsonObject tobj = obj;
 		JsonArray tarr = arr;
 		
-		if(paths.length > 1) {
-			for(int i=1; i<paths.length; i++) {
-				JsonElement el = null;
-				
-				if(tobj != null) {
-					el = tobj.get(paths[i]);
-				} else {
-					el = tarr.get(Integer.parseInt(paths[i]));
-				}
-				
-				
-				if(el.isJsonArray()) {
-					tarr = el.getAsJsonArray();
-					tobj = null;
-				} else if(el.isJsonObject()) {
-					tobj = el.getAsJsonObject();
-					tarr = null;
-				}
+		for(int i=1; i<paths.length; i++) {
+			JsonElement el = null;
+			
+			if(tobj != null) {
+				el = tobj.get(paths[i]);
+			} else {
+				el = tarr.get(Integer.parseInt(paths[i]));
+			}
+			
+			
+			if(el.isJsonArray()) {
+				tarr = el.getAsJsonArray();
+				tobj = null;
+			} else if(el.isJsonObject()) {
+				tobj = el.getAsJsonObject();
+				tarr = null;
 			}
 		}
 		
