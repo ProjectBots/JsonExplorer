@@ -37,7 +37,7 @@ public class JsonExplorer {
 				+ "   ╚════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝      ╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝\r\n"
 				+ "\r\n"
 				+ "by ProjectBots\r\n"
-				+ "Version: 1.0.0\r\n"
+				+ "Version: 1.1.0\r\n"
 				+ "\r\n"
 				+ "type help for help\r\n"
 				);
@@ -82,6 +82,9 @@ public class JsonExplorer {
 				case "search":
 					search(arg);
 					break;
+				case "export":
+					export(arg);
+					break;
 					
 					
 				default:
@@ -98,6 +101,37 @@ public class JsonExplorer {
 		
 	}
 	
+	private static void export(String arg) {
+		try {
+			JsonElement je;
+			
+			int count = 0;
+			if(arg.contains("-s ")) {
+				System.out.println("please type in search arguments ([...] {term})");
+				System.out.print("~search>");
+				je = search(s.nextLine());
+				count += 3;
+			} else {
+				je = getFromPath();
+			}
+			
+			String text;
+			if(arg.contains("-p ")) {
+				text = JsonParser.prettyJson(je);
+				count += 3;
+			} else {
+				text = je.toString();
+			}
+			arg = arg.substring(count);
+			
+			NEF.save(arg, text);
+			
+		} catch (BothNullException e) {
+			System.out.println("Nothing to export");
+		}
+		
+	}
+
 	public static class Search {
 		
 		private boolean nested = false;
@@ -151,23 +185,26 @@ public class JsonExplorer {
 		}
 		
 
-		public void search(int mode, JsonElement je, String path) {
+		public JsonArray search(int mode, JsonElement je, String path) {
+			JsonArray ret = new JsonArray();
 			if(je.isJsonObject()) {
 				JsonObject jo = je.getAsJsonObject();
 				for(String key : jo.keySet()) {
-					test(mode, jo.get(key), key, path);
+					ret.addAll(test(mode, jo.get(key), key, path));
 				}
 			} else {
 				JsonArray ja = je.getAsJsonArray();
 				for(int i=0; i<ja.size(); i++) {
-					test(mode, ja.get(i), ""+i, path);
+					ret.addAll(test(mode, ja.get(i), ""+i, path));
 				}
 			}
+			return ret;
 		}
 		
-		private void test(int mode, JsonElement e, String key, String path) {
+		private JsonArray test(int mode, JsonElement e, String key, String path) {
+			JsonArray ret = new JsonArray();
 			if(nested && (e.isJsonArray() || e.isJsonObject())) {
-				search(mode, e, path + "\\" + key);
+				ret.addAll(search(mode, e, path + "\\" + key));
 			}
 			
 			ifc:
@@ -192,25 +229,31 @@ public class JsonExplorer {
 				
 				System.out.print(path + "> \"" + key + "\" : ");
 				display(e);
-				return;
+				ret.add(e);
+				return ret;
 			}
 			
+			ifc:
 			if(values && primitives && e.isJsonPrimitive()) {
 				switch(mode) {
 				case consts.normal:
-					if(!e.getAsJsonPrimitive().getAsString().toLowerCase().contains(term.toLowerCase())) return;
+					if(!e.getAsJsonPrimitive().getAsString().toLowerCase().contains(term.toLowerCase())) break ifc;
 					break;
 				case consts.advanced:
-					if(!advMatch(e.getAsJsonPrimitive().getAsString())) return;
+					if(!advMatch(e.getAsJsonPrimitive().getAsString())) break ifc;
 					break;
 				case consts.regex:
-					if(!Pattern.matches(term, e.getAsJsonPrimitive().getAsString())) return;
+					if(!Pattern.matches(term, e.getAsJsonPrimitive().getAsString())) break ifc;
 					break;
 				}
 				
 				System.out.print(path + "> \"" + key + "\" : ");
 				display(e);
+				ret.add(e);
+				return ret;
 			}
+			
+			return ret;
 		}
 
 		private boolean advMatch(String key) {
@@ -236,7 +279,7 @@ public class JsonExplorer {
 					if(key.length() == 0) return false;
 					key = key.substring(1);
 				} else {
-					if(key.length() != 0) return false;
+					if(key.length() != 0 && !term.endsWith("#")) return false;
 				}
 				first = false;
 			}
@@ -255,7 +298,7 @@ public class JsonExplorer {
 	}
 	
 
-	private static void search(String arg) {
+	private static JsonArray search(String arg) {
 		
 		
 		int count = 0;
@@ -300,28 +343,29 @@ public class JsonExplorer {
 		
 		if(arg.contains("-reg ") && arg.contains("-adv ")) {
 			System.out.println("cant search advanced and regex");
-			return;
+			return null;
 		}
 		
+		JsonArray ret = null;
 		
 		try {
 			JsonElement je = getFromPath(path);
 			printlns();
 			if(arg.contains("-adv ")) {
 				s.setTerm(arg.substring(count + 5));
-				s.search(Search.consts.advanced, je, path);
+				ret = s.search(Search.consts.advanced, je, path);
 			} else if(arg.contains("-reg ")) {
 				s.setTerm(arg.substring(count + 5));
-				s.search(Search.consts.regex, je, path);
+				ret = s.search(Search.consts.regex, je, path);
 			} else {
 				s.setTerm(arg.substring(count));
-				s.search(Search.consts.normal, je, path);
+				ret = s.search(Search.consts.normal, je, path);
 			}
 		} catch (BothNullException e) {
 			System.out.println("nothing to search in");
 		}
 		
-		
+		return ret;
 	}
 
 	
@@ -595,10 +639,10 @@ public class JsonExplorer {
 				+ "  "
 				+ "save###saves the json  "
 				+ "save -p###saves the file as pretty json (its just easier to read for humans)  "
-				+ "save {locate}##saves the file in a specified location  "
+				+ "save {location}##saves the file in a specified location  "
 				+ "save -p {location}#saves the file in a specified location as pretty json  "
 				+ "  "
-				+ "search [params] {term}#searches after a term  "
+				+ "search [...] {term}#searches after a term  "
 				+ "#-n##searches through nested objects/arrays from the current path  "
 				+ "#-a##searches through every nested objects/arrays  "
 				+ "#-ik##searches only in the keys  "
@@ -612,6 +656,10 @@ public class JsonExplorer {
 				+ "###\\#itco\\# will match bitcoin but not itcoin because \\# has to stand for at least one character  "
 				+ "###bit\\#coin will match bitgggcoin but not bitcoin  "
 				+ "###itco will only match itco because there are no placeholders  "
+				+ "  "
+				+ "export [...] {location}#exports from current view to a specified location  "
+				+ "#-p##exports as pretty json  "
+				+ "#-s##triggers the search function, you will be asked for search arguments in the next step (see search)  "
 				+ "  "
 				+ "e###exits the program  ";
 		
@@ -687,7 +735,7 @@ public class JsonExplorer {
 	private static void saveWarning() {
 		if(isChanged) {
 			System.out.println("Do you want to save first?\r\n"
-					+ "type in save arguments ([-p] [{location}]) or n for no\r\n"
+					+ "please type in save arguments ([-p] [{location}]) or n for no\r\n"
 					+ "nothing is understood as yes");
 			System.out.print("~save>");
 			
