@@ -232,11 +232,9 @@ public class JsonExplorer {
 					if(index == -1) return false;
 					key = key.substring(index + parts[i].length());
 				}
-				if(i<parts.length-1) {
+				if(i<parts.length-1 || parts[i].equals("")) {
 					if(key.length() == 0) return false;
 					key = key.substring(1);
-				} else if(parts[i].equals("")) {
-					if(key.length() == 0) return false;
 				} else {
 					if(key.length() != 0) return false;
 				}
