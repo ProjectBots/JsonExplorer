@@ -180,7 +180,7 @@ public class JsonExplorer {
 				
 				switch(mode) {
 				case consts.normal:
-					if(!key.contains(term)) break ifc;
+					if(!key.toLowerCase().contains(term.toLowerCase())) break ifc;
 					break;
 				case consts.advanced:
 					if(!advMatch(key)) break ifc;
@@ -198,7 +198,7 @@ public class JsonExplorer {
 			if(values && primitives && e.isJsonPrimitive()) {
 				switch(mode) {
 				case consts.normal:
-					if(!e.getAsJsonPrimitive().getAsString().contains(term)) return;
+					if(!e.getAsJsonPrimitive().getAsString().toLowerCase().contains(term.toLowerCase())) return;
 					break;
 				case consts.advanced:
 					if(!advMatch(e.getAsJsonPrimitive().getAsString())) return;
