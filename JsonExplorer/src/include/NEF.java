@@ -3,7 +3,6 @@ package include;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -12,7 +11,7 @@ import java.util.Hashtable;
 
 public class NEF {
 	
-	public static void log(String path, String log) {
+	public static void log(String path, String log) throws IOException {
 		
 		File file = new File(path);
 		
@@ -32,7 +31,7 @@ public class NEF {
 	}
 	
 	
-	public static Hashtable<String, String> getOpt(String path) throws FileNotFoundException {
+	public static Hashtable<String, String> getOpt(String path) throws IOException {
 		
 		File file = new File(path);
 		
@@ -59,10 +58,6 @@ public class NEF {
 			}
 			
 			tab.put("~order", order.toString());
-		} catch (FileNotFoundException e) {
-			throw e;
-		} catch (Exception e) {
-			e.printStackTrace();
 		} finally {
 			try {
 				br.close();
@@ -72,7 +67,7 @@ public class NEF {
 		return tab;
 	}
 	
-	public static void saveOpt(String path, Hashtable<String, String> tab) {
+	public static void saveOpt(String path, Hashtable<String, String> tab) throws IOException {
 		
 		Hashtable<String, String> table = new Hashtable<>();
 		
@@ -121,8 +116,6 @@ public class NEF {
 			}
 			
 			w.write(text.substring(0, text.length() - 1));
-		} catch (Exception e) {
-			e.printStackTrace();
 		} finally {
 			try {
 				w.close();
@@ -131,7 +124,7 @@ public class NEF {
 	}
 	
 
-	public static void save(String path, String text) {
+	public static void save(String path, String text) throws IOException {
 		
 		createDir(path);
 		
@@ -146,8 +139,6 @@ public class NEF {
 			bw = new BufferedWriter(w);
 			
 			bw.write(text);
-		} catch (Exception e) {
-			e.printStackTrace();
 		} finally {
 			try {
 				bw.close();
@@ -157,9 +148,6 @@ public class NEF {
 	}
 	
 	public static String read(String path) throws IOException {
-		
-		
-		
 		File file = new File(path);
 		
 		FileReader r = null;

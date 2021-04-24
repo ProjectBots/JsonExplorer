@@ -124,7 +124,11 @@ public class JsonExplorer {
 			}
 			arg = arg.substring(count);
 			
-			NEF.save(arg, text);
+			try {
+				NEF.save(arg, text);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			
 		} catch (BothNullException e) {
 			System.out.println("Nothing to export");
@@ -403,31 +407,36 @@ public class JsonExplorer {
 
 
 	private static void save(String arg) {
-		if(path.equals("")) return;
-		if(arg.equals("")) {
-			NEF.save(filePath, (obj != null ? obj.toString() : arr.toString()));
-			return;
-		}
-		
-		if(arg.startsWith("-p")) {
-			if(arg.endsWith("-p")) {
-				if(obj != null) {
-					NEF.save(filePath, JsonParser.prettyJson(obj));
+		try {
+			if(path.equals("")) return;
+			if(arg.equals("")) {
+				NEF.save(filePath, (obj != null ? obj.toString() : arr.toString()));
+				return;
+			}
+			
+			if(arg.startsWith("-p")) {
+				if(arg.endsWith("-p")) {
+					if(obj != null) {
+						NEF.save(filePath, JsonParser.prettyJson(obj));
+					} else {
+						NEF.save(filePath, JsonParser.prettyJson(arr));
+					}
 				} else {
-					NEF.save(filePath, JsonParser.prettyJson(arr));
+					arg = arg.substring(3);
+					if(obj != null) {
+						NEF.save(arg, JsonParser.prettyJson(obj));
+					} else {
+						NEF.save(arg, JsonParser.prettyJson(arr));
+					}
 				}
 			} else {
-				arg = arg.substring(3);
-				if(obj != null) {
-					NEF.save(arg, JsonParser.prettyJson(obj));
-				} else {
-					NEF.save(arg, JsonParser.prettyJson(arr));
-				}
+				NEF.save(arg, (obj != null ? obj.toString() : arr.toString()));
 			}
-		} else {
-			NEF.save(arg, (obj != null ? obj.toString() : arr.toString()));
+			isChanged = false;
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		isChanged = false;
+		
 	}
 
 
