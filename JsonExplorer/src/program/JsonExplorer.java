@@ -555,11 +555,11 @@ public class JsonExplorer {
 		try {
 			String sjson = NEF.read(arg);
 			try {
-				obj = JsonParser.json(sjson);
+				obj = JsonParser.parseObj(sjson);
 				arr = null;
 			} catch (JsonParseException e) {
 				try {
-					arr = JsonParser.jsonArr(sjson);
+					arr = JsonParser.parseArr(sjson);
 					obj = null;
 				} catch (JsonParseException e1) {
 					System.out.println(arg + " is not a json");
